@@ -27,7 +27,7 @@ Namespace Utils
             RegexOptions.IgnoreCase)
 
         Public Function Parse(zipFileName As String) As ParsedZipName
-            Dim nameWithoutExt = IO.Path.GetFileNameWithoutExtension(zipFileName)
+            Dim nameWithoutExt = StripZipExtension(zipFileName)
             Dim match = Pattern.Match(nameWithoutExt)
 
             If Not match.Success Then
@@ -59,6 +59,18 @@ Namespace Utils
             spaced = Regex.Replace(spaced, "(?<=\d)(?=[A-Z])", " ")
             spaced = spaced.Replace("_", " ").Replace("-", " ")
             Return Regex.Replace(spaced, "\s+", " ").Trim()
+        End Function
+
+        ''' <summary>
+        ''' Removes a trailing ".zip" only. Path.GetFileNameWithoutExtension
+        ''' would also chop "8.1 & 9" off a folder named "Genesis 8.1 & 9",
+        ''' treating it as an extension.
+        ''' </summary>
+        Public Function StripZipExtension(name As String) As String
+            If name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) Then
+                Return name.Substring(0, name.Length - 4)
+            End If
+            Return name
         End Function
 
     End Module

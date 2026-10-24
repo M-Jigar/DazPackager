@@ -47,7 +47,7 @@ Namespace Utils
                 productId = parsed.ProductId
                 variantNumber = parsed.VariantNumber
             Else
-                Dim rawBase = IO.Path.GetFileNameWithoutExtension(sourceZipFileName)
+                Dim rawBase = ZipNameParser.StripZipExtension(sourceZipFileName)
                 productId = GenerateDeterministicId(rawBase)
                 variantNumber = "01"
             End If
@@ -101,9 +101,96 @@ Namespace Utils
             Return raw.Replace(" ", "")
         End Function
 
+        ''' <summary>
+        ''' Produces a DIM-safe name: accents are folded to their base letter
+        ''' (é -> e, à -> a), then only ASCII letters and digits are kept.
+        ''' DIM's file name pattern only accepts [0-9A-Za-z] after the "_"
+        ''' separator, so dots, ampersands, hyphens, etc. are dropped.
+        ''' </summary>
+        Private ReadOnly AccentMap As Dictionary(Of Char, String) = BuildAccentMap()
+
+        Private Function BuildAccentMap() As Dictionary(Of Char, String)
+            Dim map As New Dictionary(Of Char, String)
+
+            Dim Fold = Sub(baseLetter As String, accented As String)
+                           For Each ch In accented
+                               map(ch) = baseLetter
+                           Next
+                       End Sub
+
+            Fold("a", "àáâãäåāăą")
+            Fold("c", "çćĉċč")
+            Fold("d", "ďđ")
+            Fold("e", "èéêëēĕėęě")
+            Fold("g", "ĝğġģ")
+            Fold("h", "ĥħ")
+            Fold("i", "ìíîïĩīĭįı")
+            Fold("j", "ĵ")
+            Fold("k", "ķ")
+            Fold("l", "ĺļľŀł")
+            Fold("n", "ñńņň")
+            Fold("o", "òóôõöøōŏő")
+            Fold("r", "ŕŗř")
+            Fold("s", "śŝşš")
+            Fold("t", "ţťŧ")
+            Fold("u", "ùúûüũūŭůűų")
+            Fold("w", "ŵ")
+            Fold("y", "ýÿŷ")
+            Fold("z", "źżž")
+            Fold("A", "ÀÁÂÃÄÅĀĂĄ")
+            Fold("C", "ÇĆĈĊČ")
+            Fold("D", "ĎĐ")
+            Fold("E", "ÈÉÊËĒĔĖĘĚ")
+            Fold("G", "ĜĞĠĢ")
+            Fold("H", "ĤĦ")
+            Fold("I", "ÌÍÎÏĨĪĬĮİ")
+            Fold("J", "Ĵ")
+            Fold("K", "Ķ")
+            Fold("L", "ĹĻĽĿŁ")
+            Fold("N", "ÑŃŅŇ")
+            Fold("O", "ÒÓÔÕÖØŌŎŐ")
+            Fold("R", "ŔŖŘ")
+            Fold("S", "ŚŜŞŠ")
+            Fold("T", "ŢŤŦ")
+            Fold("U", "ÙÚÛÜŨŪŬŮŰŲ")
+            Fold("W", "Ŵ")
+            Fold("Y", "ÝŶŸ")
+            Fold("Z", "ŹŻŽ")
+
+            ' Ligatures and letters that expand to two characters.
+            map("æ"c) = "ae"
+            map("Æ"c) = "AE"
+            map("œ"c) = "oe"
+            map("Œ"c) = "OE"
+            map("ß"c) = "ss"
+
+            Return map
+        End Function
+
+        ''' <summary>
+        ''' Produces a DIM-safe name: accented letters are folded to their
+        ''' base letter (é -> e, à -> a) using an explicit table, then only
+        ''' ASCII letters and digits are kept. DIM's file name pattern only
+        ''' accepts [0-9A-Za-z] after the "_" separator, so dots, ampersands,
+        ''' hyphens, etc. are dropped. The table avoids string.Normalize,
+        ''' which is unreliable with InvariantGlobalization enabled.
+        ''' </summary>
         Private Function StripInvalidFileNameChars(raw As String) As String
-            Dim invalidChars = IO.Path.GetInvalidFileNameChars()
-            Return New String(raw.Where(Function(c) Not invalidChars.Contains(c)).ToArray())
+            Dim sb As New StringBuilder()
+
+            For Each c In raw
+                Dim replacement As String = Nothing
+                If AccentMap.TryGetValue(c, replacement) Then
+                    sb.Append(replacement)
+                ElseIf (c >= "a"c AndAlso c <= "z"c) OrElse
+                       (c >= "A"c AndAlso c <= "Z"c) OrElse
+                       (c >= "0"c AndAlso c <= "9"c) Then
+                    sb.Append(c)
+                End If
+                ' Anything else (combining marks, dots, &, hyphens...) is dropped.
+            Next
+
+            Return sb.ToString()
         End Function
 
     End Module
