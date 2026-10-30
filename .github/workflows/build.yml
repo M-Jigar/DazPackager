@@ -26,13 +26,16 @@ jobs:
           -p:IncludeNativeLibrariesForSelfExtract=true
           -o publish/win-x64
 
+      - name: Rename the exe
+        run: Rename-Item publish/win-x64/DazPackager.exe DazPackager-win-x64-self-contained.exe
+
       - name: Save the exe
         uses: actions/upload-artifact@v4
         with:
-          name: DazPackager-win-x64
-          path: publish/win-x64/DazPackager.exe
+          name: DazPackager-win-x64-self-contained
+          path: publish/win-x64/DazPackager-win-x64-self-contained.exe
 
       - name: Publish to Releases
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "build-${{ github.run_number }}" publish/win-x64/DazPackager.exe --title "DazPackager build ${{ github.run_number }}" --notes "Self-contained Windows x64 build"
+        run: gh release create "build-${{ github.run_number }}" publish/win-x64/DazPackager-win-x64-self-contained.exe --title "DazPackager Self-contained Build" --notes "Windows x64 build with Self-contained dotnet (no .NET install required in windows)"
